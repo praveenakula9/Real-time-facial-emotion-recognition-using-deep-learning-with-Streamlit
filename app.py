@@ -53,16 +53,6 @@ def preprocess_face(face):
     face = np.expand_dims(face, axis=(0, -1))
     return face
 
-'''# EMOTION COLORS
-emotion_colors = {
-    'Angry': (0, 0, 255),
-    'Disgust': (0, 165, 255),
-    'Fear': (128, 0, 128),
-    'Happy': (0, 255, 0),
-    'Neutral': (255, 255, 0),
-    'Sad': (255, 0, 0),
-    'Surprise': (255, 255, 0)
-}'''
 # ---------------- CONFIDENCE CHART ----------------
 def plot_confidence(preds):
     fig, ax = plt.subplots(figsize=(5, 3))
@@ -190,7 +180,7 @@ if mode == "📹 Live Webcam":
                 with col2:
                     st.metric("📊 Confidence", f"{webrtc_ctx.video_processor.confidence*100:.1f}%")
         else:
-            st.info("👆 Click 'Start' above to begin webcam streaming")
+            pass
     
     except Exception as e:
         st.error(f"❌ Webcam Error: {str(e)}")
@@ -199,55 +189,53 @@ if mode == "📹 Live Webcam":
 # =======================
 # 🖼️ IMAGE UPLOAD MODE
 # =======================
-elif mode == "🖼️ Upload Images":
-    st.subheader("🖼️ Upload Images for Emotion Detection")
-    st.markdown("Upload face images (JPG, PNG) and get emotion predictions")
-    
+elif mode == "🖼️ Test Images":
+    st.subheader("🖼️ Upload Images for Emotion Testing")
+
     uploaded_files = st.file_uploader(
-        "Choose images",
+        "Upload face images",
         type=["jpg", "jpeg", "png"],
         accept_multiple_files=True
     )
-    
+
     if uploaded_files:
-        st.markdown("---")
         cols = st.columns(3)
-        
+
         for idx, file in enumerate(uploaded_files):
             with cols[idx % 3]:
                 image = Image.open(file).convert("RGB")
                 img_array = np.array(image)
                 gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-                
-                st.image(image, caption=f"📸 {file.name}", use_container_width=True)
-                
+
                 faces = face_cascade.detectMultiScale(
                     gray, scaleFactor=1.2, minNeighbors=6, minSize=(64, 64)
                 )
-                
+
+                st.image(image, caption=file.name, use_container_width=True)
+
                 if len(faces) == 0:
-                    st.warning("❌ No face detected")
+                    st.warning("No face detected")
                     continue
-                
+
                 x, y, w, h = faces[0]
                 pad = int(0.2 * w)
                 x1 = max(0, x - pad)
                 y1 = max(0, y - pad)
                 x2 = min(gray.shape[1], x + w + pad)
                 y2 = min(gray.shape[0], y + h + pad)
-                
+
                 face = gray[y1:y2, x1:x2]
                 preds = model.predict(preprocess_face(face), verbose=0)[0]
-                
+
                 emotion = CLASSES[np.argmax(preds)]
                 confidence = np.max(preds)
-                
-                st.success(f"**{emotion}**")
-                st.info(f"**{confidence*100:.1f}%**")
 
-# FOOTER
+                st.success(f"**{emotion}** ({confidence*100:.1f}%)")
+                st.pyplot(plot_confidence(preds))
+
+# ---------------- FOOTER ----------------
 st.markdown("---")
 st.markdown(
-    "<center>🔬 Facial Emotion Recognition v2.0 | Live Webcam Streaming</center>",
+    "<center>🔬 Facial Emotion Recognition </center>",
     unsafe_allow_html=True
 )
