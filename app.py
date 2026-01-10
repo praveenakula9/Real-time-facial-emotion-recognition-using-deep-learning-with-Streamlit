@@ -81,41 +81,49 @@ class EmotionProcessor(VideoProcessorBase):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         self.frame_count += 1
         
-        # Process every 5 frames
-        if self.frame_count % 5 == 0:
-            faces = face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.2,
-                minNeighbors=6,
-                minSize=(64, 64)
-            )
+        # Detect faces on every frame (for smooth box)
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.2,
+            minNeighbors=6,
+            minSize=(64, 64)
+        )
+        
+        # Process emotion only every 5 frames (for speed)
+        if self.frame_count % 5 == 0 and len(faces) > 0:
+            x, y, w, h = faces[0]
+            pad = int(0.2 * w)
+            x1 = max(0, x - pad)
+            y1 = max(0, y - pad)
+            x2 = min(gray.shape[1], x + w + pad)
+            y2 = min(gray.shape[0], y + h + pad)
             
-            if len(faces) > 0:
-                x, y, w, h = faces[0]
-                pad = int(0.2 * w)
-                x1 = max(0, x - pad)
-                y1 = max(0, y - pad)
-                x2 = min(gray.shape[1], x + w + pad)
-                y2 = min(gray.shape[0], y + h + pad)
-                
-                face = gray[y1:y2, x1:x2]
-                preds = model.predict(preprocess_face(face), verbose=0)[0]
-                
-                self.emotion = CLASSES[np.argmax(preds)]
-                self.confidence = float(np.max(preds))
-                
-                # Draw on frame
-                color = emotion_colors.get(self.emotion, (0, 255, 0))
-                cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(
-                    img,
-                    f"{self.emotion} ({self.confidence*100:.1f}%)",
-                    (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    color,
-                    2
-                )
+            face = gray[y1:y2, x1:x2]
+            preds = model.predict(preprocess_face(face), verbose=0)[0]
+            
+            self.emotion = CLASSES[np.argmax(preds)]
+            self.confidence = float(np.max(preds))
+        
+        # Draw box on every frame (smooth, no blinking)
+        if len(faces) > 0:
+            x, y, w, h = faces[0]
+            pad = int(0.2 * w)
+            x1 = max(0, x - pad)
+            y1 = max(0, y - pad)
+            x2 = min(gray.shape[1], x + w + pad)
+            y2 = min(gray.shape[0], y + h + pad)
+            
+            color = emotion_colors.get(self.emotion, (0, 255, 0))
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(
+                img,
+                f"{self.emotion} ({self.confidence*100:.1f}%)",
+                (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                color,
+                2
+            )
         
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
