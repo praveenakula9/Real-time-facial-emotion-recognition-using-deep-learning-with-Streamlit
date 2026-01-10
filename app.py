@@ -1,21 +1,36 @@
 import os
+import sys
+
+# Suppress TensorFlow warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU
+
+import warnings
+warnings.filterwarnings('ignore')
+
 import tensorflow as tf
 
-# Optimize memory usage
+# Critical memory fixes for Streamlit Cloud
+tf.get_logger().setLevel('ERROR')
 tf.config.set_visible_devices([], 'GPU')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# Add these BEFORE loading model
+# Limit memory
 physical_devices = tf.config.list_physical_devices('CPU')
-tf.config.set_logical_device_configuration(
-    physical_devices[0],
-    [tf.config.LogicalDeviceConfiguration(memory_limit=512)]
-)
+if physical_devices:
+    try:
+        # Allocate only 512MB
+        tf.config.set_logical_device_configuration(
+            physical_devices[0],
+            [tf.config.LogicalDeviceConfiguration(memory_limit=512)]
+        )
+    except RuntimeError as e:
+        pass
+
 
 import streamlit as st
 import cv2
 import numpy as np
-import tensorflow as tf
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
 import av
 from PIL import Image
