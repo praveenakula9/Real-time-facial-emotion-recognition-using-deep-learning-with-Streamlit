@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 import matplotlib.pyplot as plt
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration, VideoProcessorBase
 import av
 
 # Disable GPU
@@ -64,32 +64,14 @@ emotion_colors = {
     'Surprise': (255, 255, 0)
 }
 
-# SIDEBAR
-st.sidebar.title("⚙️ Select Mode")
-mode = st.sidebar.radio(
-    "Choose input:",
-    ["📹 Live Webcam", "🖼️ Upload Images"]
-)
-
-# =======================
-# 📹 LIVE WEBCAM MODE
-# =======================
-if mode == "📹 Live Webcam":
-    st.subheader("📹 Real-Time Webcam Emotion Detection")
-    st.markdown("**Allow camera access when browser asks!**")
-    
-    # RTC Configuration for better compatibility
-    rtc_configuration = RTCConfiguration(
-        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-    )
-    
-    class EmotionProcessor:
+# EMOTION PROCESSOR CLASS
+class EmotionProcessor(VideoProcessorBase):
     def __init__(self):
         self.emotion = "Detecting..."
         self.confidence = 0.0
         self.frame_count = 0
-        
-    def recv_frame(self, frame):
+    
+    def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
         
         # Reduce resolution for speed
@@ -136,9 +118,25 @@ if mode == "📹 Live Webcam":
                 )
         
         return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+# SIDEBAR
+st.sidebar.title("⚙️ Select Mode")
+mode = st.sidebar.radio(
+    "Choose input:",
+    ["📹 Live Webcam", "🖼️ Upload Images"]
+)
+
+# =======================
+# 📹 LIVE WEBCAM MODE
+# =======================
+if mode == "📹 Live Webcam":
+    st.subheader("📹 Real-Time Webcam Emotion Detection")
+    st.markdown("**Allow camera access when browser asks!**")
     
-    def recv(self, frame):
-        return self.recv_frame(frame)
+    # RTC Configuration for better compatibility
+    rtc_configuration = RTCConfiguration(
+        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    )
     
     try:
         webrtc_ctx = webrtc_streamer(
