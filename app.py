@@ -1,3 +1,4 @@
+# Environment support
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -17,7 +18,7 @@ import av
 # Disable GPU
 tf.config.set_visible_devices([], 'GPU')
 
-# PAGE CONFIG
+# Page setup
 st.set_page_config(
     page_title="Facial Emotion Recognition",
     page_icon="😊",
@@ -26,7 +27,7 @@ st.set_page_config(
 
 st.title("😊 Facial Emotion Recognition (FER)")
 
-# LOAD MODEL
+# Load model 
 @st.cache_resource
 def load_model():
     return tf.keras.models.load_model("emotion_model.keras")
@@ -37,15 +38,15 @@ model = load_model()
 CLASSES = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 IMG_SIZE = (96, 96)
 
-# FACE DETECTOR
+# Face detector
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
-# CLAHE
+# Clahe
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
-# PREPROCESS
+# Preprocess
 def preprocess_face(face):
     face = clahe.apply(face)
     face = cv2.resize(face, IMG_SIZE, interpolation=cv2.INTER_AREA)
@@ -73,15 +74,16 @@ class EmotionProcessor(VideoProcessorBase):
         self.last_box = None
 
     def recv(self, frame):
+        self.emotion = self.last_label
+        self.confidence = self.last_conf
+
         img = frame.to_ndarray(format="bgr24")
 
-        # 🔥 Reduce resolution (HUGE speed gain)
         img = cv2.resize(img, (640, 480))
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         self.frame_count += 1
-
-        # 🔥 Run heavy logic only every 5 frames
+        
         if self.frame_count % 5 == 0:
             faces = face_cascade.detectMultiScale(
                 gray,
@@ -120,7 +122,6 @@ class EmotionProcessor(VideoProcessorBase):
                 self.last_conf = np.max(self.smooth_preds)
                 self.last_box = (x1, y1, x2, y2)
 
-        # 🔥 Draw cached result (NO ML HERE)
         if self.last_box is not None:
             x1, y1, x2, y2 = self.last_box
             cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 2)
@@ -183,9 +184,6 @@ if mode == "📹 Live Webcam":
             pass
         
     except Exception as e:
-        # st.error(f"❌ Webcam Error: {str(e)}")
-        
-        #st.warning("💡 Try refreshing the page or using a different browser (Chrome recommended)")
         pass
 
 # =======================
