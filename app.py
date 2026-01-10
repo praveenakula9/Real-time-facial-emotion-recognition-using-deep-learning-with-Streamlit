@@ -181,6 +181,12 @@ if mode == "📹 Live Webcam":
                     st.metric("📊 Confidence", f"{webrtc_ctx.video_processor.confidence*100:.1f}%")
         else:
             pass
+        
+    except Exception as e:
+        # st.error(f"❌ Webcam Error: {str(e)}")
+        
+        #st.warning("💡 Try refreshing the page or using a different browser (Chrome recommended)")
+        pass
 
 # =======================
 # 🖼️ IMAGE UPLOAD MODE
