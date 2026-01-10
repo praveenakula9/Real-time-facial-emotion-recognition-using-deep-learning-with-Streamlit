@@ -1,31 +1,9 @@
 import os
-import sys
-
-# Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import warnings
 warnings.filterwarnings('ignore')
-
-import tensorflow as tf
-
-# Critical memory fixes for Streamlit Cloud
-tf.get_logger().setLevel('ERROR')
-tf.config.set_visible_devices([], 'GPU')
-
-# Limit memory
-physical_devices = tf.config.list_physical_devices('CPU')
-if physical_devices:
-    try:
-        # Allocate only 512MB
-        tf.config.set_logical_device_configuration(
-            physical_devices[0],
-            [tf.config.LogicalDeviceConfiguration(memory_limit=512)]
-        )
-    except RuntimeError as e:
-        pass
 
 
 import streamlit as st
@@ -35,6 +13,9 @@ from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfigurati
 import av
 from PIL import Image
 import matplotlib.pyplot as plt
+import tensorflow as tf
+
+tf.config.set_visible_devices([], 'GPU')
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -48,12 +29,9 @@ st.title("😊 Facial Emotion Recognition (FER)")
 # ---------------- LOAD MODEL ----------------
 @st.cache_resource
 def load_model():
-    try:
-        model = tf.keras.models.load_model("emotion_model.keras")
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        st.stop()
+    return tf.keras.models.load_model("emotion_model.keras")
+
+model = load_model()
 
 # ---------------- CONSTANTS ----------------
 CLASSES = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
