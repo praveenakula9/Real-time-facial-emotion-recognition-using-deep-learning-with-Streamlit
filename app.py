@@ -1,3 +1,17 @@
+import os
+import tensorflow as tf
+
+# Optimize memory usage
+tf.config.set_visible_devices([], 'GPU')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+# Add these BEFORE loading model
+physical_devices = tf.config.list_physical_devices('CPU')
+tf.config.set_logical_device_configuration(
+    physical_devices[0],
+    [tf.config.LogicalDeviceConfiguration(memory_limit=512)]
+)
+
 import streamlit as st
 import cv2
 import numpy as np
@@ -19,9 +33,12 @@ st.title("😊 Facial Emotion Recognition (FER)")
 # ---------------- LOAD MODEL ----------------
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("emotion_model.keras")
-
-model = load_model()
+    try:
+        model = tf.keras.models.load_model("emotion_model.keras")
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        st.stop()
 
 # ---------------- CONSTANTS ----------------
 CLASSES = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
