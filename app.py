@@ -184,7 +184,7 @@ if mode == "📹 Live Webcam":
     
     except Exception as e:
         # st.error(f"❌ Webcam Error: {str(e)}")
-        st.info("💡 Try refreshing the page or using a different browser (Chrome recommended)")
+        # st.info("💡 Try refreshing the page or using a different browser (Chrome recommended)")
 
 # =======================
 # 🖼️ IMAGE UPLOAD MODE
