@@ -183,7 +183,7 @@ if mode == "📹 Live Webcam":
             pass
     
     except Exception as e:
-        st.error(f"❌ Webcam Error: {str(e)}")
+        # st.error(f"❌ Webcam Error: {str(e)}")
         st.info("💡 Try refreshing the page or using a different browser (Chrome recommended)")
 
 # =======================
