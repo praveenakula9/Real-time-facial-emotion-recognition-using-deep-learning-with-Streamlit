@@ -170,7 +170,7 @@ if mode == "📹 Live Webcam":
         
         if webrtc_ctx.state.playing:
             st.success("✅ Webcam is running!")
-            st.info("🎥 Allow camera access when your browser asks")
+            # st.info("🎥 Allow camera access when your browser asks")
             
             # Display stats
             if webrtc_ctx.video_processor:
