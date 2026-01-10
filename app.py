@@ -189,7 +189,7 @@ if mode == "📹 Live Webcam":
 # =======================
 # 🖼️ IMAGE UPLOAD MODE
 # =======================
-elif mode == "🖼️ Test Images":
+else mode == "🖼️ Test Images":
     st.subheader("🖼️ Upload Images for Emotion Testing")
 
     uploaded_files = st.file_uploader(
