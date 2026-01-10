@@ -33,7 +33,6 @@ def load_model():
 
 model = load_model()
 
-# ---------------- CONSTANTS ----------------
 CLASSES = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 IMG_SIZE = (96, 96)
 
@@ -42,10 +41,8 @@ face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
-# ---------------- CLAHE ----------------
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
-# ---------------- ICE CONFIG ----------------
 RTC_CONFIGURATION = RTCConfiguration(
     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
 )
@@ -67,7 +64,7 @@ def plot_confidence(preds):
     plt.tight_layout()
     return fig
 
-# ---------------- WEBCAM PROCESSOR (EMA SMOOTHING) ----------------
+# ---------------- WEBCAM PROCESSOR  ----------------
 class EmotionProcessor(VideoProcessorBase):
     def __init__(self):
         self.smooth_preds = None
@@ -79,14 +76,11 @@ class EmotionProcessor(VideoProcessorBase):
 
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
-
-        # 🔥 Reduce resolution (HUGE speed gain)
         img = cv2.resize(img, (640, 480))
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         self.frame_count += 1
-
-        # 🔥 Run heavy logic only every 5 frames
+        
         if self.frame_count % 5 == 0:
             faces = face_cascade.detectMultiScale(
                 gray,
@@ -112,7 +106,6 @@ class EmotionProcessor(VideoProcessorBase):
 
                 preds = model.predict(face, verbose=0)[0]
 
-                # EMA smoothing
                 if self.smooth_preds is None:
                     self.smooth_preds = preds
                 else:
@@ -125,7 +118,6 @@ class EmotionProcessor(VideoProcessorBase):
                 self.last_conf = np.max(self.smooth_preds)
                 self.last_box = (x1, y1, x2, y2)
 
-        # 🔥 Draw cached result (NO ML HERE)
         if self.last_box is not None:
             x1, y1, x2, y2 = self.last_box
             cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 2)
@@ -148,9 +140,8 @@ mode = st.sidebar.radio(
     ["📹 Webcam", "🖼️ Test Images"]
 )
 
-# =======================
 # 📹 WEBCAM MODE
-# =======================
+
 if mode == "📹 Webcam":
     st.subheader("📹 Real-Time Webcam Emotion Detection")
     st.markdown("Allow **camera access** when prompted.")
@@ -167,9 +158,7 @@ if mode == "📹 Webcam":
 )
 
 
-# =======================
 # 🖼️ IMAGE TEST MODE
-# =======================
 elif mode == "🖼️ Test Images":
     st.subheader("🖼️ Upload Images for Emotion Testing")
 
