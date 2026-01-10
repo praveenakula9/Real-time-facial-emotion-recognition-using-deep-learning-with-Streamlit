@@ -11,8 +11,8 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 import matplotlib.pyplot as plt
-import threading
-import time
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+import av
 
 # Disable GPU
 tf.config.set_visible_devices([], 'GPU')
@@ -55,148 +55,118 @@ def preprocess_face(face):
 
 # EMOTION COLORS
 emotion_colors = {
-    'Angry': (0, 0, 255),      # Red
-    'Disgust': (0, 165, 255),  # Orange
-    'Fear': (128, 0, 128),     # Purple
-    'Happy': (0, 255, 0),      # Green
-    'Neutral': (255, 255, 0),  # Cyan
-    'Sad': (255, 0, 0),        # Blue
-    'Surprise': (255, 255, 0)  # Yellow
+    'Angry': (0, 0, 255),
+    'Disgust': (0, 165, 255),
+    'Fear': (128, 0, 128),
+    'Happy': (0, 255, 0),
+    'Neutral': (255, 255, 0),
+    'Sad': (255, 0, 0),
+    'Surprise': (255, 255, 0)
 }
 
 # SIDEBAR
 st.sidebar.title("⚙️ Select Mode")
 mode = st.sidebar.radio(
     "Choose input:",
-    ["📹 Live Webcam Video", "🖼️ Upload Images"]
+    ["📹 Live Webcam", "🖼️ Upload Images"]
 )
 
 # =======================
-# 📹 LIVE WEBCAM VIDEO MODE
+# 📹 LIVE WEBCAM MODE
 # =======================
-if mode == "📹 Live Webcam Video":
+if mode == "📹 Live Webcam":
     st.subheader("📹 Real-Time Webcam Emotion Detection")
-    st.markdown("**Allow camera access and start the stream**")
+    st.markdown("**Allow camera access when browser asks!**")
     
-    # Start/Stop button
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        start_button = st.button("▶️ START", key="start_btn")
-    with col2:
-        stop_button = st.button("⏹️ STOP", key="stop_btn")
+    # RTC Configuration for better compatibility
+    rtc_configuration = RTCConfiguration(
+        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    )
     
-    # Placeholder for video stream
-    video_placeholder = st.empty()
-    stats_placeholder = st.empty()
-    
-    if start_button or st.session_state.get('webcam_running', False):
-        st.session_state.webcam_running = True
-        
-        # Open webcam
-        cap = cv2.VideoCapture(0)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_FPS, 15)
-        
-        # Variables for smoothing
-        smooth_emotion = None
-        smooth_confidence = None
-        frame_count = 0
-        alpha = 0.3
-        
-        try:
-            while st.session_state.get('webcam_running', True) and not stop_button:
-                ret, frame = cap.read()
+    class EmotionProcessor(av.AudioFrameProcessor, av.VideoFrameProcessor):
+        def __init__(self):
+            self.emotion = "Detecting..."
+            self.confidence = 0.0
+            self.frame_count = 0
+            
+        def recv(self, frame):
+            img = frame.to_ndarray(format="bgr24")
+            
+            # Reduce resolution for speed
+            img = cv2.resize(img, (640, 480))
+            img = cv2.flip(img, 1)
+            
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            self.frame_count += 1
+            
+            # Process every 5 frames
+            if self.frame_count % 5 == 0:
+                faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.2,
+                    minNeighbors=6,
+                    minSize=(64, 64)
+                )
                 
-                if not ret:
-                    st.error("❌ Could not access webcam")
-                    break
-                
-                # Flip frame horizontally (mirror effect)
-                frame = cv2.flip(frame, 1)
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                
-                # Process every 5 frames for performance
-                frame_count += 1
-                
-                if frame_count % 5 == 0:
-                    # Detect faces
-                    faces = face_cascade.detectMultiScale(
-                        gray, 
-                        scaleFactor=1.2, 
-                        minNeighbors=6, 
-                        minSize=(64, 64)
-                    )
+                if len(faces) > 0:
+                    x, y, w, h = faces[0]
+                    pad = int(0.2 * w)
+                    x1 = max(0, x - pad)
+                    y1 = max(0, y - pad)
+                    x2 = min(gray.shape[1], x + w + pad)
+                    y2 = min(gray.shape[0], y + h + pad)
                     
-                    if len(faces) > 0:
-                        # Get largest face
-                        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-                        
-                        # Add padding
-                        pad = int(0.2 * w)
-                        x1 = max(0, x - pad)
-                        y1 = max(0, y - pad)
-                        x2 = min(frame.shape[1], x + w + pad)
-                        y2 = min(frame.shape[0], y + h + pad)
-                        
-                        # Extract and predict
-                        face = gray[y1:y2, x1:x2]
-                        preds = model.predict(preprocess_face(face), verbose=0)[0]
-                        
-                        emotion = CLASSES[np.argmax(preds)]
-                        confidence = float(np.max(preds))
-                        
-                        # EMA smoothing
-                        if smooth_emotion is None:
-                            smooth_emotion = emotion
-                            smooth_confidence = confidence
-                        else:
-                            # Smooth confidence
-                            smooth_confidence = (alpha * confidence + 
-                                                (1 - alpha) * smooth_confidence)
-                        
-                        # Draw rectangle around face
-                        color = emotion_colors.get(emotion, (0, 255, 0))
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                        
-                        # Draw emotion label
-                        label = f"{emotion} ({smooth_confidence*100:.1f}%)"
-                        cv2.putText(
-                            frame,
-                            label,
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.9,
-                            color,
-                            2
-                        )
-                        
-                        # Draw confidence bar
-                        bar_width = int(smooth_confidence * 150)
-                        cv2.rectangle(frame, (x1, y2 + 10), (x1 + bar_width, y2 + 20), color, -1)
-                        cv2.rectangle(frame, (x1, y2 + 10), (x1 + 150, y2 + 20), (255, 255, 255), 2)
-                
-                # Display frame
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                video_placeholder.image(frame_rgb, use_container_width=True)
-                
-                # Display stats
-                if smooth_emotion:
-                    with stats_placeholder.container():
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("😊 Emotion", smooth_emotion)
-                        with col2:
-                            st.metric("📊 Confidence", f"{smooth_confidence*100:.1f}%")
-                        with col3:
-                            st.metric("🎬 Frames", frame_count)
-                
-                time.sleep(0.05)  # ~20 FPS
+                    face = gray[y1:y2, x1:x2]
+                    preds = model.predict(preprocess_face(face), verbose=0)[0]
+                    
+                    self.emotion = CLASSES[np.argmax(preds)]
+                    self.confidence = float(np.max(preds))
+                    
+                    # Draw on frame
+                    color = emotion_colors.get(self.emotion, (0, 255, 0))
+                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(
+                        img,
+                        f"{self.emotion} ({self.confidence*100:.1f}%)",
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        color,
+                        2
+                    )
+            
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
+    
+    try:
+        webrtc_ctx = webrtc_streamer(
+            key="emotion-detection",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=rtc_configuration,
+            media_stream_constraints={
+                "audio": False,
+                "video": {"frameRate": {"ideal": 15}}
+            },
+            async_processing=True,
+            video_processor_factory=EmotionProcessor,
+        )
         
-        finally:
-            cap.release()
-            st.session_state.webcam_running = False
-            st.success("✅ Webcam stopped")
+        if webrtc_ctx.state.playing:
+            st.success("✅ Webcam is running!")
+            st.info("🎥 Allow camera access when your browser asks")
+            
+            # Display stats
+            if webrtc_ctx.video_processor:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("😊 Emotion", webrtc_ctx.video_processor.emotion)
+                with col2:
+                    st.metric("📊 Confidence", f"{webrtc_ctx.video_processor.confidence*100:.1f}%")
+        else:
+            st.info("👆 Click 'Start' above to begin webcam streaming")
+    
+    except Exception as e:
+        st.error(f"❌ Webcam Error: {str(e)}")
+        st.info("💡 Try refreshing the page or using a different browser (Chrome recommended)")
 
 # =======================
 # 🖼️ IMAGE UPLOAD MODE
