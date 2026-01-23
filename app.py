@@ -151,9 +151,12 @@ if mode == "📹 Live Webcam":
     st.subheader("📹 Real-Time Webcam Emotion Detection")
     st.markdown("**Allow camera access when browser asks!**")
     
-    # RTC Configuration for better compatibility
+    # RTC Configuration for Render deployment
     rtc_configuration = RTCConfiguration(
-        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+        {"iceServers": [
+            {"urls": ["stun:stun.l.google.com:19302"]},
+            {"urls": ["stun:stun1.l.google.com:19302"]},
+        ]}
     )
     
     try:
@@ -163,7 +166,11 @@ if mode == "📹 Live Webcam":
             rtc_configuration=rtc_configuration,
             media_stream_constraints={
                 "audio": False,
-                "video": {"frameRate": {"ideal": 15}}
+                "video": {
+                    "width": {"ideal": 640},
+                    "height": {"ideal": 480},
+                    "frameRate": {"ideal": 15}
+                }
             },
             async_processing=True,
             video_processor_factory=EmotionProcessor,
@@ -171,7 +178,6 @@ if mode == "📹 Live Webcam":
         
         if webrtc_ctx.state.playing:
             st.success("✅ Webcam is running!")
-            # st.info("🎥 Allow camera access when your browser asks")
             
             # Display stats
             if webrtc_ctx.video_processor:
@@ -181,15 +187,16 @@ if mode == "📹 Live Webcam":
                 with col2:
                     st.metric("📊 Confidence", f"{webrtc_ctx.video_processor.confidence*100:.1f}%")
         else:
-            pass
+            st.info("👆 Click 'START' to begin webcam detection")
         
     except Exception as e:
-        pass
+        st.error(f"⚠️ Webcam error: {str(e)}")
+        st.info("💡 Tip: Try using the 'Upload Images' mode instead")
 
 # =======================
 # 🖼️ IMAGE UPLOAD MODE
 # =======================
-else :
+else:
     st.subheader("🖼️ Upload Images for Emotion Testing")
 
     uploaded_files = st.file_uploader(
@@ -214,7 +221,7 @@ else :
                 st.image(image, caption=file.name, use_container_width=True)
 
                 if len(faces) == 0:
-                    st.warning("No face detected")
+                    st.warning("⚠️ No face detected")
                     continue
 
                 x, y, w, h = faces[0]
@@ -232,10 +239,12 @@ else :
 
                 st.success(f"**{emotion}** ({confidence*100:.1f}%)")
                 st.pyplot(plot_confidence(preds))
+    else:
+        st.info("👆 Upload one or more images to get started!")
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
 st.markdown(
-    "<center>🔬 Facial Emotion Recognition </center>",
+    "<center>🔬 Facial Emotion Recognition</center>",
     unsafe_allow_html=True
 )
