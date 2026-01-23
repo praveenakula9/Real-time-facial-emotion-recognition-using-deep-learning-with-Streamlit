@@ -1,11 +1,19 @@
-streamlit==1.31.0
+# Core
+python==3.10.*
+
+# Streamlit
+streamlit==1.32.2
 streamlit-webrtc==0.47.1
+
+# Computer Vision
+opencv-python==4.9.0.80
+mediapipe==0.10.14
+
+# Deep Learning
 tensorflow==2.15.0
-opencv-python-headless==4.9.0.80
-numpy==1.24.3
-Pillow==10.2.0
-matplotlib==3.8.2
-protobuf==3.20.3
+
+# Utilities
+numpy==1.26.4
+matplotlib==3.8.4
+pillow==10.3.0
 av==11.0.0
-aiortc==1.6.0
-aioice==0.9.0
