@@ -69,12 +69,14 @@ class EmotionProcessor(VideoProcessorBase):
         self.smooth_preds = None
         self.alpha = 0.3
         self.frame_count = 0
-        self.last_label = ""
+        self.last_label = "Detecting..."
         self.last_conf = 0.0
         self.last_box = None
+        self.emotion = "Detecting..."
+        self.confidence = 0.0
 
     def recv(self, frame):
-        self.emotion = self.last_label
+        self.emotion = self.last_label if self.last_label else "Detecting..."
         self.confidence = self.last_conf
 
         img = frame.to_ndarray(format="bgr24")
